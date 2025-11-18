@@ -1,0 +1,27 @@
+{
+  "account": {
+    "id": "123456789",
+    "alias": "Demo Trading Account",
+    "currency": "USD",
+    "balance": "50000.00",
+    "unrealizedPL": "250.50",
+    "marginUsed": "5000.00",
+    "marginAvailable": "45000.00",
+    "marginRate": "0.05",
+    "accountNumber": "123-456-789-01",
+    "guaranteedStopLossOrderMode": "DISABLED",
+    "hedgingMode": false,
+    "resettablePL": "10000.00",
+    "resettablePLTime": "2024-01-01T00:00:00Z",
+    "financing": {
+      "USD": "-10.50"
+    },
+    "openTradeCount": 3,
+    "openPositionCount": 2,
+    "pendingOrderCount": 1,
+    "positionValue": "100000.00",
+    "createdByUserID": 12345678,
+    "createdTime": "2023-06-15T10:30:00Z",
+    "lastTransactionID": "9876543210"
+  }
+}

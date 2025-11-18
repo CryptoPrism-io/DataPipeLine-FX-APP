@@ -1,0 +1,52 @@
+# FX Data Pipeline - Python Dependencies
+
+# Core Libraries
+python-dotenv==1.0.0
+requests==2.31.0
+
+# Database
+psycopg2-binary==2.9.9
+
+# Caching
+redis==5.0.1
+
+# Data Analysis
+pandas==2.0.3
+numpy==1.24.3
+
+# Scheduling
+APScheduler==3.10.4
+
+# Web Framework (for API & WebSocket)
+Flask==3.0.0
+Flask-SocketIO==5.3.4
+Flask-CORS==4.0.0
+python-socketio==5.9.0
+python-engineio==4.7.1
+
+# WebSocket (alternative to Flask-SocketIO)
+# websockets==11.0.3
+
+# API Framework (FastAPI alternative)
+# fastapi==0.104.1
+# uvicorn==0.24.0
+
+# Utilities
+python-dateutil==2.8.2
+
+# Logging & Monitoring
+python-json-logger==2.0.7
+
+# Type Checking (Development)
+# mypy==1.7.0
+# types-requests==2.31.0.8
+# types-redis==4.6.0.7
+
+# Testing
+# pytest==7.4.3
+# pytest-cov==4.1.0
+
+# Code Quality (Development)
+# black==23.11.0
+# flake8==6.1.0
+# isort==5.13.1

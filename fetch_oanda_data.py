@@ -11,7 +11,12 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 # Configuration
-API_KEY = "1efe99db63748bbf330e1a40c9b2025c-14231b52d39cc54b13999846750c22ab"
+API_KEY = os.getenv("OANDA_API_KEY")
+if not API_KEY:
+    print("❌ Error: OANDA_API_KEY environment variable not set")
+    print("Please set your API key: export OANDA_API_KEY='your_api_key_here'")
+    exit(1)
+
 DEMO_BASE_URL = "https://api-fxpractice.oanda.com"
 LIVE_BASE_URL = "https://api-fxtrade.oanda.com"
 

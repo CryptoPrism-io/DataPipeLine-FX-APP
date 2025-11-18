@@ -1,0 +1,145 @@
+{
+  "prices": [
+    {
+      "bids": [
+        {
+          "price": "1.08945",
+          "liquidity": 50000000
+        },
+        {
+          "price": "1.08944",
+          "liquidity": 40000000
+        }
+      ],
+      "asks": [
+        {
+          "price": "1.08950",
+          "liquidity": 50000000
+        },
+        {
+          "price": "1.08951",
+          "liquidity": 40000000
+        }
+      ],
+      "instrument": "EUR_USD",
+      "time": "2024-11-18T15:45:30.123456789Z",
+      "bid": "1.08945",
+      "ask": "1.08950",
+      "closeoutBid": "1.08940",
+      "closeoutAsk": "1.08955",
+      "status": "tradeable",
+      "tradeable": true,
+      "quoteHomeConversionFactors": {
+        "positiveUnits": "1.00000000",
+        "negativeUnits": "1.00000000"
+      },
+      "unitsAvailable": {
+        "default": {
+          "long": "500000",
+          "short": "500000"
+        },
+        "openOnly": {
+          "long": "500000",
+          "short": "500000"
+        },
+        "reduceFirst": {
+          "long": "500000",
+          "short": "500000"
+        },
+        "reduceOnly": {
+          "long": "0",
+          "short": "0"
+        }
+      }
+    },
+    {
+      "bids": [
+        {
+          "price": "1.27345",
+          "liquidity": 30000000
+        }
+      ],
+      "asks": [
+        {
+          "price": "1.27350",
+          "liquidity": 30000000
+        }
+      ],
+      "instrument": "GBP_USD",
+      "time": "2024-11-18T15:45:30.456789123Z",
+      "bid": "1.27345",
+      "ask": "1.27350",
+      "closeoutBid": "1.27340",
+      "closeoutAsk": "1.27355",
+      "status": "tradeable",
+      "tradeable": true,
+      "quoteHomeConversionFactors": {
+        "positiveUnits": "1.00000000",
+        "negativeUnits": "1.00000000"
+      },
+      "unitsAvailable": {
+        "default": {
+          "long": "500000",
+          "short": "500000"
+        },
+        "openOnly": {
+          "long": "500000",
+          "short": "500000"
+        },
+        "reduceFirst": {
+          "long": "500000",
+          "short": "500000"
+        },
+        "reduceOnly": {
+          "long": "0",
+          "short": "0"
+        }
+      }
+    },
+    {
+      "bids": [
+        {
+          "price": "151.245",
+          "liquidity": 20000000
+        }
+      ],
+      "asks": [
+        {
+          "price": "151.260",
+          "liquidity": 20000000
+        }
+      ],
+      "instrument": "USD_JPY",
+      "time": "2024-11-18T15:45:30.789456123Z",
+      "bid": "151.245",
+      "ask": "151.260",
+      "closeoutBid": "151.240",
+      "closeoutAsk": "151.265",
+      "status": "tradeable",
+      "tradeable": true,
+      "quoteHomeConversionFactors": {
+        "positiveUnits": "0.00661157",
+        "negativeUnits": "0.00661157"
+      },
+      "unitsAvailable": {
+        "default": {
+          "long": "500000",
+          "short": "500000"
+        },
+        "openOnly": {
+          "long": "500000",
+          "short": "500000"
+        },
+        "reduceFirst": {
+          "long": "500000",
+          "short": "500000"
+        },
+        "reduceOnly": {
+          "long": "0",
+          "short": "0"
+        }
+      }
+    }
+  ],
+  "time": "2024-11-18T15:45:31.000000000Z"
+}

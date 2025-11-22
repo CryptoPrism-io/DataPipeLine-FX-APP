@@ -54,6 +54,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -72,14 +77,11 @@ jobs:
 
       - name: Initialize database
         env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: fx_trading_data
-          DB_USER: postgres
-          DB_PASSWORD: postgres
+          PGPASSWORD: postgres
           OANDA_API_KEY: ${{ secrets.OANDA_API_KEY }}
         run: |
           echo "Creating database schema..."
+          export PGPASSWORD=postgres
           psql -h localhost -U postgres -d fx_trading_data -f database/schema.sql
 
       - name: Run tests
@@ -143,6 +145,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -153,6 +160,7 @@ jobs:
           PGPASSWORD: postgres
         run: |
           echo "Creating database schema..."
+          export PGPASSWORD=postgres
           psql -h localhost -U postgres -d fx_trading_data -f database/schema.sql
 
       - name: Run hourly data fetch
@@ -174,7 +182,7 @@ jobs:
 
       - name: Upload logs
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: data-fetch-logs
           path: logs/

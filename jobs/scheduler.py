@@ -33,6 +33,9 @@ from utils.config import Config
 from hourly_job import hourly_job
 from daily_correlation_job import daily_correlation_job
 
+# Create logs directory if needed (MUST be before logging setup)
+Path("logs").mkdir(exist_ok=True)
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,

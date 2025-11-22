@@ -278,6 +278,9 @@ def daily_correlation_job():
 
 
 if __name__ == "__main__":
+    # Create logs directory if needed (MUST be before logging setup)
+    Path("logs").mkdir(exist_ok=True)
+
     # Setup logging
     logging.basicConfig(
         level=logging.INFO,
@@ -287,9 +290,6 @@ if __name__ == "__main__":
             logging.StreamHandler(),
         ],
     )
-
-    # Create logs directory if needed
-    Path("logs").mkdir(exist_ok=True)
 
     # Run the job
     success = daily_correlation_job()

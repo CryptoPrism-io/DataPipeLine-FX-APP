@@ -41,7 +41,7 @@ def backfill_ohlc_data():
     logger.info("=" * 80)
 
     db = get_db()
-    client = OANDAClient(use_demo=True)
+    client = OANDAClient(api_token=Config.OANDA_API_KEY, use_demo=(Config.OANDA_ENVIRONMENT == "demo"))
 
     pairs = Config.TRACKED_PAIRS
     total_records = 0

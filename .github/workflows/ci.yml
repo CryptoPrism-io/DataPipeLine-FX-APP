@@ -105,35 +105,11 @@ jobs:
         continue-on-error: true
 
   # Job 2: Fetch and Store FX Data (runs on schedule or manual trigger)
+  # Uses EXTERNAL PostgreSQL database for persistent storage
   fetch-data:
-    name: Fetch FX Data
+    name: Fetch FX Data to External DB
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_DB: fx_trading_data
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
 
     steps:
       - name: Checkout code
@@ -155,30 +131,55 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Initialize database
+      - name: Test database connection
         env:
-          PGPASSWORD: postgres
+          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
-          echo "Creating database schema..."
-          export PGPASSWORD=postgres
-          psql -h localhost -U postgres -d fx_trading_data -f database/schema.sql
+          echo "Testing connection to external database..."
+          psql -h ${{ secrets.DB_HOST }} -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }} -c "SELECT version();"
+          echo "✓ Database connection successful!"
+
+      - name: Initialize database schema (if needed)
+        env:
+          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          echo "Ensuring database schema exists..."
+          psql -h ${{ secrets.DB_HOST }} -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }} -f database/schema.sql
+          echo "✓ Schema initialized"
 
       - name: Run hourly data fetch
         env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: fx_trading_data
-          DB_USER: postgres
-          DB_PASSWORD: postgres
-          REDIS_HOST: localhost
-          REDIS_PORT: 6379
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT || '5432' }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST || 'localhost' }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT || '6379' }}
           OANDA_API_KEY: ${{ secrets.OANDA_API_KEY }}
-          OANDA_ENVIRONMENT: demo
+          OANDA_ENVIRONMENT: ${{ secrets.OANDA_ENVIRONMENT || 'demo' }}
           HOURLY_JOB_ENABLED: 'True'
           DAILY_JOB_ENABLED: 'False'
         run: |
-          echo "Fetching latest FX data..."
+          echo "Fetching latest FX data from OANDA API..."
+          echo "Target database: ${{ secrets.DB_HOST }}"
           python jobs/hourly_job.py
+          echo "✓ Data fetch completed!"
+
+      - name: Verify data was stored
+        env:
+          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          echo "Verifying data in database..."
+          psql -h ${{ secrets.DB_HOST }} -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }} -c "
+            SELECT
+              'Candles: ' || COUNT(*) FROM oanda_candles
+              UNION ALL
+              SELECT 'Volatility: ' || COUNT(*) FROM volatility_metrics
+              UNION ALL
+              SELECT 'Correlations: ' || COUNT(*) FROM correlation_matrix;
+          "
+          echo "✓ Data verification complete!"
 
       - name: Upload logs
         if: always()

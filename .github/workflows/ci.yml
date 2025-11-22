@@ -8,6 +8,8 @@ on:
   schedule:
     # Run hourly data fetch (every hour)
     - cron: '0 * * * *'
+    # Run daily correlation analysis (every day at midnight UTC)
+    - cron: '0 0 * * *'
   workflow_dispatch:  # Allow manual trigger
 
 env:
@@ -165,6 +167,21 @@ jobs:
           echo "Target database: ${{ secrets.POSTGRES_HOST }}"
           python jobs/hourly_job.py
           echo "✓ Data fetch completed!"
+
+      - name: Run daily correlation analysis (if scheduled at midnight)
+        if: github.event.schedule == '0 0 * * *'
+        env:
+          DB_HOST: ${{ secrets.POSTGRES_HOST }}
+          DB_PORT: ${{ secrets.POSTGRES_PORT || '5432' }}
+          DB_NAME: ${{ secrets.POSTGRES_DB }}
+          DB_USER: ${{ secrets.POSTGRES_USER }}
+          DB_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          OANDA_API_KEY: ${{ secrets.OANDA_API_KEY }}
+          OANDA_ENVIRONMENT: demo
+        run: |
+          echo "Running daily correlation analysis..."
+          python jobs/daily_correlation_job.py
+          echo "✓ Correlation analysis completed!"
 
       - name: Verify data was stored
         env:

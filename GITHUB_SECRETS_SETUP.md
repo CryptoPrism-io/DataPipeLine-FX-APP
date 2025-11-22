@@ -19,11 +19,11 @@ You need to add these secrets to your GitHub repository:
 
 | Secret Name | Description | Example |
 |-------------|-------------|---------|
-| `DB_HOST` | Database host/endpoint | `mydb.abc123.us-east-1.rds.amazonaws.com` |
-| `DB_PORT` | Database port (optional) | `5432` (default) |
-| `DB_NAME` | Database name | `fx_trading_data` |
-| `DB_USER` | Database username | `postgres` or `fx_admin` |
-| `DB_PASSWORD` | Database password | `your_secure_password` |
+| `POSTGRES_HOST` | Database host/endpoint | `mydb.abc123.us-east-1.rds.amazonaws.com` |
+| `POSTGRES_PORT` | Database port | `5432` |
+| `POSTGRES_DB` | Database name | `fx_trading_data` |
+| `POSTGRES_USER` | Database username | `postgres` or `fx_admin` |
+| `POSTGRES_PASSWORD` | Database password | `your_secure_password` |
 
 ### 3. Redis Configuration (Optional)
 
@@ -76,11 +76,11 @@ For each secret listed above:
 ```
 
 **GitHub Secrets:**
-- `DB_HOST`: `mydb.abc123.us-east-1.rds.amazonaws.com`
-- `DB_PORT`: `5432`
-- `DB_NAME`: `fx_trading_data`
-- `DB_USER`: `postgres`
-- `DB_PASSWORD`: `<your_password>`
+- `POSTGRES_HOST`: `mydb.abc123.us-east-1.rds.amazonaws.com`
+- `POSTGRES_PORT`: `5432`
+- `POSTGRES_DB`: `fx_trading_data`
+- `POSTGRES_USER`: `postgres`
+- `POSTGRES_PASSWORD`: `<your_password>`
 
 ### Option B: DigitalOcean Managed Database
 
@@ -97,11 +97,11 @@ For each secret listed above:
 ```
 
 **GitHub Secrets:**
-- `DB_HOST`: `db-postgresql-nyc1-12345.ondigitalocean.com`
-- `DB_PORT`: `25060`
-- `DB_NAME`: `fx_trading_data`
-- `DB_USER`: `doadmin`
-- `DB_PASSWORD`: `<provided_password>`
+- `POSTGRES_HOST`: `db-postgresql-nyc1-12345.ondigitalocean.com`
+- `POSTGRES_PORT`: `25060`
+- `POSTGRES_DB`: `fx_trading_data`
+- `POSTGRES_USER`: `doadmin`
+- `POSTGRES_PASSWORD`: `<provided_password>`
 
 ### Option C: Heroku Postgres
 
@@ -132,11 +132,11 @@ heroku pg:credentials:url DATABASE_URL -a your-app
 ```
 
 **GitHub Secrets:**
-- `DB_HOST`: `db.abc123.supabase.co`
-- `DB_PORT`: `5432`
-- `DB_NAME`: `postgres`
-- `DB_USER`: `postgres`
-- `DB_PASSWORD`: `<your_password>`
+- `POSTGRES_HOST`: `db.abc123.supabase.co`
+- `POSTGRES_PORT`: `5432`
+- `POSTGRES_DB`: `postgres`
+- `POSTGRES_USER`: `postgres`
+- `POSTGRES_PASSWORD`: `<your_password>`
 
 ### Option E: Railway (Free Tier Available)
 
@@ -216,10 +216,10 @@ curl https://api.github.com/meta | jq .actions
 sudo apt-get install postgresql-client
 
 # Test connection
-psql -h <DB_HOST> -U <DB_USER> -d <DB_NAME> -c "SELECT version();"
+psql -h <POSTGRES_HOST> -U <POSTGRES_USER> -d <POSTGRES_DB> -c "SELECT version();"
 
 # Initialize schema
-psql -h <DB_HOST> -U <DB_USER> -d <DB_NAME> -f database/schema.sql
+psql -h <POSTGRES_HOST> -U <POSTGRES_USER> -d <POSTGRES_DB> -f database/schema.sql
 ```
 
 ### Test in GitHub Actions
@@ -279,7 +279,7 @@ DELETE FROM correlation_matrix WHERE time < NOW() - INTERVAL '365 days';
 **Cause:** Database not accessible from GitHub Actions
 
 **Solutions:**
-1. Check `DB_HOST` is correct (external IP/hostname)
+1. Check `POSTGRES_HOST` is correct (external IP/hostname)
 2. Verify firewall allows GitHub Actions IPs
 3. Ensure database is publicly accessible (or use VPN)
 
@@ -288,7 +288,7 @@ DELETE FROM correlation_matrix WHERE time < NOW() - INTERVAL '365 days';
 **Cause:** Incorrect credentials
 
 **Solutions:**
-1. Verify `DB_USER` and `DB_PASSWORD` are correct
+1. Verify `POSTGRES_USER` and `POSTGRES_PASSWORD` are correct
 2. Check database user has correct permissions
 3. Test connection locally with same credentials
 
@@ -298,7 +298,7 @@ DELETE FROM correlation_matrix WHERE time < NOW() - INTERVAL '365 days';
 
 **Solutions:**
 1. Create database: `CREATE DATABASE fx_trading_data;`
-2. Verify `DB_NAME` secret matches actual database name
+2. Verify `POSTGRES_DB` secret matches actual database name
 
 ### Error: "permission denied for table"
 
@@ -323,12 +323,11 @@ Before running the workflow:
 - [ ] Database schema initialized (or workflow will do it)
 - [ ] All required secrets added to GitHub:
   - [ ] `OANDA_API_KEY`
-  - [ ] `OANDA_ENVIRONMENT`
-  - [ ] `DB_HOST`
-  - [ ] `DB_NAME`
-  - [ ] `DB_USER`
-  - [ ] `DB_PASSWORD`
-  - [ ] `DB_PORT` (optional)
+  - [ ] `POSTGRES_HOST`
+  - [ ] `POSTGRES_DB`
+  - [ ] `POSTGRES_USER`
+  - [ ] `POSTGRES_PASSWORD`
+  - [ ] `POSTGRES_PORT`
 - [ ] Connection tested locally
 - [ ] Firewall rules configured (if applicable)
 

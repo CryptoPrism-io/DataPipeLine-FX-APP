@@ -133,45 +133,45 @@ jobs:
 
       - name: Test database connection
         env:
-          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+          PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
           echo "Testing connection to external database..."
-          psql -h ${{ secrets.DB_HOST }} -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }} -c "SELECT version();"
+          psql -h ${{ secrets.POSTGRES_HOST }} -U ${{ secrets.POSTGRES_USER }} -d ${{ secrets.POSTGRES_DB }} -c "SELECT version();"
           echo "✓ Database connection successful!"
 
       - name: Initialize database schema (if needed)
         env:
-          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+          PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
           echo "Ensuring database schema exists..."
-          psql -h ${{ secrets.DB_HOST }} -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }} -f database/schema.sql
+          psql -h ${{ secrets.POSTGRES_HOST }} -U ${{ secrets.POSTGRES_USER }} -d ${{ secrets.POSTGRES_DB }} -f database/schema.sql
           echo "✓ Schema initialized"
 
       - name: Run hourly data fetch
         env:
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_PORT: ${{ secrets.DB_PORT || '5432' }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_HOST: ${{ secrets.POSTGRES_HOST }}
+          DB_PORT: ${{ secrets.POSTGRES_PORT || '5432' }}
+          DB_NAME: ${{ secrets.POSTGRES_DB }}
+          DB_USER: ${{ secrets.POSTGRES_USER }}
+          DB_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           REDIS_HOST: ${{ secrets.REDIS_HOST || 'localhost' }}
           REDIS_PORT: ${{ secrets.REDIS_PORT || '6379' }}
           OANDA_API_KEY: ${{ secrets.OANDA_API_KEY }}
-          OANDA_ENVIRONMENT: ${{ secrets.OANDA_ENVIRONMENT || 'demo' }}
+          OANDA_ENVIRONMENT: demo
           HOURLY_JOB_ENABLED: 'True'
           DAILY_JOB_ENABLED: 'False'
         run: |
           echo "Fetching latest FX data from OANDA API..."
-          echo "Target database: ${{ secrets.DB_HOST }}"
+          echo "Target database: ${{ secrets.POSTGRES_HOST }}"
           python jobs/hourly_job.py
           echo "✓ Data fetch completed!"
 
       - name: Verify data was stored
         env:
-          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+          PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
           echo "Verifying data in database..."
-          psql -h ${{ secrets.DB_HOST }} -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }} -c "
+          psql -h ${{ secrets.POSTGRES_HOST }} -U ${{ secrets.POSTGRES_USER }} -d ${{ secrets.POSTGRES_DB }} -c "
             SELECT
               'Candles: ' || COUNT(*) FROM oanda_candles
               UNION ALL

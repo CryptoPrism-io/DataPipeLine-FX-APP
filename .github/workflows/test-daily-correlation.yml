@@ -10,21 +10,6 @@ jobs:
   run-daily-correlation:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_DB: fx_trading_data
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD || 'postgres' }}
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -45,20 +30,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Initialize database schema
+      - name: Initialize database schema (non-destructive)
+        if: ${{ secrets.POSTGRES_HOST != '' }}
         env:
-          PGPASSWORD: ${{ secrets.DB_PASSWORD || 'postgres' }}
+          PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
-          echo "Creating database schema..."
-          psql -h localhost -U postgres -d fx_trading_data -f database/schema.sql
+          echo "Ensuring database schema exists on external DB..."
+          psql -h ${{ secrets.POSTGRES_HOST }} -U ${{ secrets.POSTGRES_USER }} -d ${{ secrets.POSTGRES_DB }} -f database/schema.sql
 
       - name: Run daily correlation job
         env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: fx_trading_data
-          DB_USER: postgres
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD || 'postgres' }}
+          DB_HOST: ${{ secrets.POSTGRES_HOST }}
+          DB_PORT: ${{ secrets.POSTGRES_PORT || '5432' }}
+          DB_NAME: ${{ secrets.POSTGRES_DB || 'fx_global' }}
+          DB_USER: ${{ secrets.POSTGRES_USER || 'yogass09' }}
+          DB_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           OANDA_API_KEY: ${{ secrets.OANDA_API_KEY }}
           OANDA_ENVIRONMENT: demo
         run: |

@@ -38,29 +38,67 @@ class Config:
     WEBSOCKET_HOST = os.getenv("WEBSOCKET_HOST", "0.0.0.0")
     WEBSOCKET_PORT = int(os.getenv("WEBSOCKET_PORT", "5001"))
 
-    # Top 20 tracked pairs
-    TRACKED_PAIRS = [
-        "EUR_USD",
-        "GBP_USD",
-        "USD_JPY",
-        "USD_CAD",
+    # Tracked instruments by asset class
+    FX_TRACKED = [
+        "AUD_CHF",
+        "AUD_JPY",
         "AUD_USD",
-        "USD_CHF",
-        "NZD_USD",
+        "CAD_CHF",
+        "CAD_JPY",
+        "CHF_JPY",
+        "EUR_AUD",
+        "EUR_CAD",
+        "EUR_CHF",
         "EUR_GBP",
         "EUR_JPY",
-        "EUR_CHF",
-        "GBP_JPY",
-        "GBP_CHF",
-        "AUD_JPY",
-        "AUD_NZD",
-        "EUR_AUD",
+        "EUR_NZD",
+        "EUR_USD",
         "GBP_AUD",
-        "USD_CNH",
-        "USD_HKD",
-        "EUR_CAD",
         "GBP_CAD",
+        "GBP_CHF",
+        "GBP_JPY",
+        "GBP_NZD",
+        "GBP_USD",
     ]
+
+    METAL_TRACKED = [
+        "XAU_USD",
+        "XAG_USD",
+    ]
+
+    CFD_TRACKED = [
+        # US indices
+        "US500",
+        "US30",
+        "USTEC",
+        "US2000",
+        # Europe indices
+        "DE30",
+        "FR40",
+        "ES35",
+        "UK100",
+        "STOXX50",
+        "SWI20",
+        # Asia / Australia indices
+        "JP225",
+        "AU200",
+        # Energy
+        "USOIL",
+        "UKOIL",
+        "NGAS",
+    ]
+
+    TRACKED_ALL = FX_TRACKED + METAL_TRACKED + CFD_TRACKED
+
+    CORRELATION_ASSET_CLASSES = {"FX", "METAL"}
+    ASSET_CLASS_BY_INSTRUMENT = {
+        **{i: "FX" for i in FX_TRACKED},
+        **{i: "METAL" for i in METAL_TRACKED},
+        **{i: "CFD" for i in CFD_TRACKED},
+    }
+
+    # Backward compatibility: legacy tracked pairs map to correlation universe (set after class definition)
+    TRACKED_PAIRS = []
 
     # Cron job settings
     HOURLY_JOB_ENABLED = os.getenv("HOURLY_JOB_ENABLED", "True").lower() == "true"
@@ -113,3 +151,6 @@ try:
     Config.validate()
 except ValueError as e:
     print(f"⚠️ {e}")
+
+# Finalize TRACKED_PAIRS after class definition
+Config.TRACKED_PAIRS = [i for i, cls in Config.ASSET_CLASS_BY_INSTRUMENT.items() if cls in Config.CORRELATION_ASSET_CLASSES]

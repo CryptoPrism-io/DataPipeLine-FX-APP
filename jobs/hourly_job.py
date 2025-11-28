@@ -27,7 +27,7 @@ from utils.config import Config
 logger = logging.getLogger(__name__)
 
 
-def fetch_and_store_candles(client: OANDAClient, db, pairs: list) -> int:
+def fetch_and_store_candles(client: OANDAClient, db, pairs: list, asset_classes: dict) -> int:
     """
     Fetch latest OHLC candles and store in database
 
@@ -54,7 +54,7 @@ def fetch_and_store_candles(client: OANDAClient, db, pairs: list) -> int:
 
             for candle in candles:
                 try:
-                    db.insert_candle(pair, candle)
+                    db.insert_candle(pair, candle, asset_class=asset_classes.get(pair, "UNKNOWN"))
                     inserted += 1
                 except Exception as e:
                     logger.debug(f"  Duplicate or error for {pair}: {e}")
@@ -156,12 +156,21 @@ def hourly_job():
     logger.info("=" * 80)
 
     db = get_db()
-    client = OANDAClient(api_token=Config.OANDA_API_KEY, use_demo=(Config.OANDA_ENVIRONMENT == "demo"))
-    pairs = Config.TRACKED_PAIRS
+    client = OANDAClient(api_token=Config.OANDA_API_KEY, use_demo=(str(Config.OANDA_ENVIRONMENT).lower() != "live"))
+    pairs = Config.TRACKED_ALL
+    asset_classes = Config.ASSET_CLASS_BY_INSTRUMENT
+
+    # Best-effort instrument registry
+    for inst in pairs:
+        try:
+            db.upsert_instrument(inst, asset_class=asset_classes.get(inst))
+        except Exception:
+            # Safe to ignore if instruments table is absent
+            pass
 
     try:
         # Step 1: Fetch candles (5 sec)
-        candle_count = fetch_and_store_candles(client, db, pairs)
+        candle_count = fetch_and_store_candles(client, db, pairs, asset_classes)
 
         # Step 2: Calculate volatility (10 sec)
         metric_count = calculate_volatility_metrics(db, pairs)

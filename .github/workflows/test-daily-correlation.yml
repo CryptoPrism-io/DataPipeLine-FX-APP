@@ -3,6 +3,9 @@ name: Test Daily Correlation Job
 on:
   workflow_dispatch:
 
+env:
+  PYTHON_VERSION: '3.10'
+
 jobs:
   run-daily-correlation:
     runs-on: ubuntu-latest
@@ -11,34 +14,31 @@ jobs:
       postgres:
         image: postgres:15
         env:
+          POSTGRES_DB: fx_trading_data
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD || 'postgres' }}
-          POSTGRES_DB: fx_trading_data
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
         ports:
           - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres -d fx_trading_data"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-    env:
-      OANDA_API_KEY: ${{ secrets.OANDA_API_KEY }}
-      DB_HOST: localhost
-      DB_PORT: 5432
-      DB_NAME: fx_trading_data
-      DB_USER: postgres
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD || 'postgres' }}
-      LOG_LEVEL: INFO
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
 
       - name: Install dependencies
         run: |
@@ -47,9 +47,20 @@ jobs:
 
       - name: Initialize database schema
         env:
-          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+          PGPASSWORD: ${{ secrets.DB_PASSWORD || 'postgres' }}
         run: |
+          echo "Creating database schema..."
           psql -h localhost -U postgres -d fx_trading_data -f database/schema.sql
 
       - name: Run daily correlation job
-        run: python jobs/daily_correlation_job.py
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: fx_trading_data
+          DB_USER: postgres
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD || 'postgres' }}
+          OANDA_API_KEY: ${{ secrets.OANDA_API_KEY }}
+          OANDA_ENVIRONMENT: demo
+        run: |
+          echo "Running daily correlation analysis..."
+          python jobs/daily_correlation_job.py

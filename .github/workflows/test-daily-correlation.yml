@@ -31,7 +31,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Initialize database schema (non-destructive)
-        if: secrets.POSTGRES_HOST != ''
+        if: ${{ secrets.POSTGRES_HOST != '' }}
         env:
           PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |

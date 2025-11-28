@@ -41,9 +41,10 @@ def backfill_ohlc_data():
     logger.info("=" * 80)
 
     db = get_db()
-    client = OANDAClient(api_token=Config.OANDA_API_KEY, use_demo=(Config.OANDA_ENVIRONMENT == "demo"))
+    client = OANDAClient(api_token=Config.OANDA_API_KEY, use_demo=(str(Config.OANDA_ENVIRONMENT).lower() != "live"))
 
-    pairs = Config.TRACKED_PAIRS
+    pairs = Config.TRACKED_ALL
+    asset_classes = Config.ASSET_CLASS_BY_INSTRUMENT
     total_records = 0
     failed_pairs = []
 
@@ -106,7 +107,7 @@ def backfill_ohlc_data():
             inserted_count = 0
             for candle in all_candles:
                 try:
-                    db.insert_candle(pair, candle)
+                    db.insert_candle(pair, candle, asset_class=asset_classes.get(pair, "UNKNOWN"))
                     inserted_count += 1
                 except Exception as e:
                     logger.warning(f"    Failed to insert candle: {e}")
@@ -132,7 +133,7 @@ def backfill_ohlc_data():
     # Show record count by pair
     logger.info("\n📈 Records per pair:")
     counts = db.get_candle_count()
-    for pair in sorted(Config.TRACKED_PAIRS):
+    for pair in sorted(Config.TRACKED_ALL):
         count = counts.get(pair, 0)
         logger.info(f"  {pair}: {count:,} records")
 

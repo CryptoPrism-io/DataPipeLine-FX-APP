@@ -78,37 +78,67 @@ class DatabaseConnection:
         finally:
             cursor.close()
 
-    def insert_candle(self, instrument: str, candle_data: dict):
-        """Insert OHLC candle into database"""
-        with self.cursor() as cursor:
-            cursor.execute(
-                """
-                INSERT INTO oanda_candles
-                (instrument, time, granularity, open_bid, high_bid, low_bid, close_bid,
-                 open_ask, high_ask, low_ask, close_ask, open_mid, high_mid, low_mid, close_mid, volume)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (instrument, time, granularity) DO UPDATE SET
-                    updated_at = CURRENT_TIMESTAMP
-                """,
-                (
-                    instrument,
-                    candle_data["time"],
-                    candle_data.get("granularity", "H1"),
-                    candle_data["bid"]["o"],
-                    candle_data["bid"]["h"],
-                    candle_data["bid"]["l"],
-                    candle_data["bid"]["c"],
-                    candle_data["ask"]["o"],
-                    candle_data["ask"]["h"],
-                    candle_data["ask"]["l"],
-                    candle_data["ask"]["c"],
-                    candle_data["mid"]["o"],
-                    candle_data["mid"]["h"],
-                    candle_data["mid"]["l"],
-                    candle_data["mid"]["c"],
-                    candle_data.get("volume", 0),
-                ),
-            )
+    def insert_candle(self, instrument: str, candle_data: dict, asset_class: str = None):
+        """Insert OHLC candle into database (asset-class aware, with fallback for legacy schema)"""
+        asset_cls = asset_class or "UNKNOWN"
+        complete = bool(candle_data.get("complete", True))
+
+        params = (
+            instrument,
+            asset_cls,
+            candle_data["time"],
+            candle_data.get("granularity", "H1"),
+            candle_data["bid"]["o"],
+            candle_data["bid"]["h"],
+            candle_data["bid"]["l"],
+            candle_data["bid"]["c"],
+            candle_data["ask"]["o"],
+            candle_data["ask"]["h"],
+            candle_data["ask"]["l"],
+            candle_data["ask"]["c"],
+            candle_data["mid"]["o"],
+            candle_data["mid"]["h"],
+            candle_data["mid"]["l"],
+            candle_data["mid"]["c"],
+            candle_data.get("volume", 0),
+            complete,
+        )
+
+        try:
+            with self.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO oanda_candles
+                    (instrument, asset_class, time, granularity,
+                     open_bid, high_bid, low_bid, close_bid,
+                     open_ask, high_ask, low_ask, close_ask,
+                     open_mid, high_mid, low_mid, close_mid,
+                     volume, complete)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (instrument, time, granularity) DO UPDATE SET
+                        asset_class = EXCLUDED.asset_class,
+                        complete = EXCLUDED.complete,
+                        updated_at = CURRENT_TIMESTAMP
+                    """,
+                    params,
+                )
+        except Exception as e:
+            # Fallback for legacy schema without asset_class/complete
+            if "asset_class" in str(e) or "complete" in str(e):
+                with self.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO oanda_candles
+                        (instrument, time, granularity, open_bid, high_bid, low_bid, close_bid,
+                         open_ask, high_ask, low_ask, close_ask, open_mid, high_mid, low_mid, close_mid, volume)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (instrument, time, granularity) DO UPDATE SET
+                            updated_at = CURRENT_TIMESTAMP
+                        """,
+                        params[0:16] + (params[16],),
+                    )
+            else:
+                raise
 
     def insert_volatility_metric(self, instrument: str, metric_data: dict):
         """Insert volatility metrics into database"""
@@ -136,6 +166,27 @@ class DatabaseConnection:
                     metric_data.get("atr"),
                 ),
             )
+
+    def upsert_instrument(self, name: str, asset_class: str = None, display_name: str = None):
+        """Register instrument with asset class (best effort; skips if table absent)"""
+        try:
+            with self.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO instruments (name, asset_class, display_name)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (name) DO UPDATE SET
+                        asset_class = COALESCE(EXCLUDED.asset_class, instruments.asset_class),
+                        display_name = COALESCE(EXCLUDED.display_name, instruments.display_name),
+                        updated_at = CURRENT_TIMESTAMP
+                    """,
+                    (name, asset_class, display_name),
+                )
+        except Exception as e:
+            if "instruments" in str(e):
+                logger.debug("Instruments table not present; skipping upsert")
+            else:
+                raise
 
     def insert_correlation(self, pair1: str, pair2: str, correlation: float, time: datetime):
         """Insert correlation data into database"""

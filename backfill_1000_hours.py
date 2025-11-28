@@ -44,7 +44,7 @@ def backfill_1000_hours(hours: int = 1000):
     logger.info("🟢 Starting OHLC Data Backfill")
     logger.info("=" * 80)
     logger.info(f"Start time: {datetime.utcnow().isoformat()}")
-    logger.info(f"Pairs to fetch: {len(Config.TRACKED_PAIRS)}")
+    logger.info(f"Instruments to fetch: {len(Config.TRACKED_ALL)}")
     approx_days = hours / 24.0
     logger.info(f"Candles per pair: {hours} (~{approx_days:.1f} days)")
     logger.info("=" * 80)
@@ -52,13 +52,18 @@ def backfill_1000_hours(hours: int = 1000):
     db = get_db()
     client = OANDAClient(
         api_token=Config.OANDA_API_KEY,
-        use_demo=(Config.OANDA_ENVIRONMENT == "demo")
+        use_demo=(str(Config.OANDA_ENVIRONMENT).lower() != "live")
     )
 
-    pairs = Config.TRACKED_PAIRS
+    pairs = Config.TRACKED_ALL
     total_candles = 0
     total_inserted = 0
     failed_pairs = []
+    asset_classes = Config.ASSET_CLASS_BY_INSTRUMENT
+
+    # Register instruments (best-effort; ignored if table missing)
+    for inst in pairs:
+        db.upsert_instrument(inst, asset_class=asset_classes.get(inst))
 
     for idx, pair in enumerate(pairs, 1):
         logger.info(f"\n[{idx}/{len(pairs)}] Processing {pair}...")
@@ -87,7 +92,7 @@ def backfill_1000_hours(hours: int = 1000):
 
             for candle in candles:
                 try:
-                    db.insert_candle(pair, candle)
+                    db.insert_candle(pair, candle, asset_class=asset_classes.get(pair, "UNKNOWN"))
                     inserted_count += 1
                 except Exception as e:
                     # Skip duplicate entries (already exist)

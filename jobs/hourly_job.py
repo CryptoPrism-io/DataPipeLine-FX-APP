@@ -173,7 +173,7 @@ def hourly_job():
         candle_count = fetch_and_store_candles(client, db, pairs, asset_classes)
 
         # Step 2: Calculate volatility (10 sec)
-    metric_count = calculate_volatility_metrics(db, pairs, asset_classes)
+        metric_count = calculate_volatility_metrics(db, pairs, asset_classes)
 
         # Step 3: Log job execution
         job_end = datetime.utcnow()

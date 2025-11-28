@@ -100,10 +100,7 @@ CREATE TABLE IF NOT EXISTS best_pairs_tracker (
     rank INT,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    INDEX idx_time (time),
-    INDEX idx_category (category)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 5. Real-time Prices Audit Table (24-hour rolling buffer)

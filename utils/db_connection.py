@@ -140,32 +140,54 @@ class DatabaseConnection:
             else:
                 raise
 
-    def insert_volatility_metric(self, instrument: str, metric_data: dict):
-        """Insert volatility metrics into database"""
-        with self.cursor() as cursor:
-            cursor.execute(
-                """
-                INSERT INTO volatility_metrics
-                (instrument, time, volatility_20, volatility_50, sma_15, sma_30, sma_50,
-                 bb_upper, bb_middle, bb_lower, atr)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (instrument, time) DO UPDATE SET
-                    updated_at = CURRENT_TIMESTAMP
-                """,
-                (
-                    instrument,
-                    metric_data.get("time"),
-                    metric_data.get("volatility_20"),
-                    metric_data.get("volatility_50"),
-                    metric_data.get("sma_15"),
-                    metric_data.get("sma_30"),
-                    metric_data.get("sma_50"),
-                    metric_data.get("bb_upper"),
-                    metric_data.get("bb_middle"),
-                    metric_data.get("bb_lower"),
-                    metric_data.get("atr"),
-                ),
-            )
+    def insert_volatility_metric(self, instrument: str, metric_data: dict, asset_class: str = None):
+        """Insert volatility metrics into database (asset-class aware, with legacy fallback)"""
+        asset_cls = asset_class or "UNKNOWN"
+        params = (
+            instrument,
+            asset_cls,
+            metric_data.get("time"),
+            metric_data.get("volatility_20"),
+            metric_data.get("volatility_50"),
+            metric_data.get("sma_15"),
+            metric_data.get("sma_30"),
+            metric_data.get("sma_50"),
+            metric_data.get("bb_upper"),
+            metric_data.get("bb_middle"),
+            metric_data.get("bb_lower"),
+            metric_data.get("atr"),
+        )
+
+        try:
+            with self.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO volatility_metrics
+                    (instrument, asset_class, time, volatility_20, volatility_50, sma_15, sma_30, sma_50,
+                     bb_upper, bb_middle, bb_lower, atr)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (instrument, time) DO UPDATE SET
+                        asset_class = EXCLUDED.asset_class,
+                        updated_at = CURRENT_TIMESTAMP
+                    """,
+                    params,
+                )
+        except Exception as e:
+            if "asset_class" in str(e):
+                with self.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO volatility_metrics
+                        (instrument, time, volatility_20, volatility_50, sma_15, sma_30, sma_50,
+                         bb_upper, bb_middle, bb_lower, atr)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (instrument, time) DO UPDATE SET
+                            updated_at = CURRENT_TIMESTAMP
+                        """,
+                        (params[0], params[2], params[3], params[4], params[5], params[6], params[7], params[8], params[9], params[10], params[11]),
+                    )
+            else:
+                raise
 
     def upsert_instrument(self, name: str, asset_class: str = None, display_name: str = None):
         """Register instrument with asset class (best effort; skips if table absent)"""

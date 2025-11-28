@@ -68,7 +68,7 @@ def fetch_and_store_candles(client: OANDAClient, db, pairs: list, asset_classes:
     return inserted
 
 
-def calculate_volatility_metrics(db, pairs: list) -> int:
+def calculate_volatility_metrics(db, pairs: list, asset_classes: dict) -> int:
     """
     Calculate volatility metrics for all pairs
 
@@ -135,7 +135,7 @@ def calculate_volatility_metrics(db, pairs: list) -> int:
                 "atr": float(atr.iloc[-1]) if len(atr) > 0 else None,
             }
 
-            db.insert_volatility_metric(pair, metric_data)
+            db.insert_volatility_metric(pair, metric_data, asset_class=asset_classes.get(pair, "UNKNOWN"))
             calculated += 1
 
         except Exception as e:
@@ -173,7 +173,7 @@ def hourly_job():
         candle_count = fetch_and_store_candles(client, db, pairs, asset_classes)
 
         # Step 2: Calculate volatility (10 sec)
-        metric_count = calculate_volatility_metrics(db, pairs)
+    metric_count = calculate_volatility_metrics(db, pairs, asset_classes)
 
         # Step 3: Log job execution
         job_end = datetime.utcnow()

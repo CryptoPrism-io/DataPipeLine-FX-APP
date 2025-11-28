@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS oanda_candles (
 CREATE TABLE IF NOT EXISTS volatility_metrics (
     id BIGSERIAL PRIMARY KEY,
     instrument VARCHAR(20) NOT NULL,
+    asset_class VARCHAR(20) DEFAULT 'FX',
     time TIMESTAMP NOT NULL,
 
     -- Volatility metrics
@@ -165,6 +166,7 @@ ON CONFLICT (session_name) DO NOTHING;
 CREATE INDEX IF NOT EXISTS idx_oanda_candles_instrument_time ON oanda_candles(instrument, time DESC);
 CREATE INDEX IF NOT EXISTS idx_oanda_candles_time ON oanda_candles(time DESC);
 CREATE INDEX IF NOT EXISTS idx_volatility_metrics_instrument_time ON volatility_metrics(instrument, time DESC);
+CREATE INDEX IF NOT EXISTS idx_volatility_metrics_asset_class_time ON volatility_metrics(asset_class, time DESC);
 CREATE INDEX IF NOT EXISTS idx_volatility_metrics_time ON volatility_metrics(time DESC);
 CREATE INDEX IF NOT EXISTS idx_correlation_time ON correlation_matrix(time DESC);
 CREATE INDEX IF NOT EXISTS idx_best_pairs_time ON best_pairs_tracker(time DESC);

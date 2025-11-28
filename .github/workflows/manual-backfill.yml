@@ -1,0 +1,49 @@
+name: Manual Backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      window_days:
+        description: "Backfill window (days)"
+        required: true
+        default: "12"
+        type: choice
+        options: ["12", "24", "36"]
+
+env:
+  PYTHON_VERSION: "3.10"
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run backfill
+        env:
+          POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
+          POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          OANDA_API_KEY: ${{ secrets.OANDA_API_KEY }}
+          OANDA_ENVIRONMENT: practice
+          PYTHONIOENCODING: utf-8
+        run: |
+          WINDOW_DAYS=${{ github.event.inputs.window_days }}
+          HOURS=$(( WINDOW_DAYS * 24 ))
+          echo "Backfilling $HOURS hours (${WINDOW_DAYS} days) per pair..."
+          python backfill_1000_hours.py --hours "$HOURS"

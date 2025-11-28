@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  PYTHON_VERSION: '3.10'
+  PYTHON_VERSION: "3.10"
 
 jobs:
   run-daily-correlation:
@@ -18,35 +18,23 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Initialize database schema (non-destructive)
-        if: ${{ secrets.POSTGRES_HOST != '' }}
-        env:
-          PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-        run: |
-          echo "Ensuring database schema exists on external DB..."
-          psql -h ${{ secrets.POSTGRES_HOST }} -U ${{ secrets.POSTGRES_USER }} -d ${{ secrets.POSTGRES_DB }} -f database/schema.sql
-
-      - name: Run daily correlation job
+      - name: Run daily correlation analysis (manual trigger)
         env:
           DB_HOST: ${{ secrets.POSTGRES_HOST }}
-          DB_PORT: ${{ secrets.POSTGRES_PORT || '5432' }}
-          DB_NAME: ${{ secrets.POSTGRES_DB || 'fx_global' }}
-          DB_USER: ${{ secrets.POSTGRES_USER || 'yogass09' }}
+          DB_PORT: ${{ secrets.POSTGRES_PORT }}
+          DB_NAME: ${{ secrets.POSTGRES_DB }}
+          DB_USER: ${{ secrets.POSTGRES_USER }}
           DB_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           OANDA_API_KEY: ${{ secrets.OANDA_API_KEY }}
-          OANDA_ENVIRONMENT: demo
+          OANDA_ENVIRONMENT: practice
         run: |
           echo "Running daily correlation analysis..."
           python jobs/daily_correlation_job.py
+          echo "✓ Correlation analysis completed!"

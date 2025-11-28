@@ -54,7 +54,12 @@ def calculate_correlation_matrix(db, pairs: list, window_size: int = 100) -> Opt
         try:
             candles = db.get_latest_candles(pair, limit=window_size)
 
-            if len(candles) < window_size // 2:
+            if not candles:
+                logger.warning(f"  Skipping {pair}: no candles available")
+                continue
+
+            # Require at least 2 points to compute correlation; otherwise skip.
+            if len(candles) < 2:
                 logger.warning(f"  Skipping {pair}: insufficient data ({len(candles)} candles)")
                 continue
 
@@ -63,8 +68,9 @@ def calculate_correlation_matrix(db, pairs: list, window_size: int = 100) -> Opt
                 logger.warning(f"  Skipping {pair}: no closing prices found")
                 continue
 
-            price_data[pair] = prices
-            min_series_length = len(prices) if min_series_length is None else min(min_series_length, len(prices))
+            capped_len = min(window_size, len(prices))
+            price_data[pair] = prices[-capped_len:]
+            min_series_length = capped_len if min_series_length is None else min(min_series_length, capped_len)
 
         except Exception as e:
             logger.error(f"  Error fetching data for {pair}: {e}")
@@ -210,7 +216,7 @@ def daily_correlation_job() -> bool:
     pairs = Config.TRACKED_PAIRS
 
     try:
-        correlation_matrix = calculate_correlation_matrix(db, pairs, window_size=100)
+        correlation_matrix = calculate_correlation_matrix(db, pairs, window_size=Config.CORRELATION_WINDOW_SIZE)
 
         if correlation_matrix is None or correlation_matrix.empty:
             raise ValueError("Failed to calculate correlation matrix")

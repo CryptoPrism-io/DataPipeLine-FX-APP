@@ -12,7 +12,7 @@ jobs:
         image: postgres:15
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD || 'postgres' }}
           POSTGRES_DB: fx_trading_data
         ports:
           - 5432:5432
@@ -28,7 +28,7 @@ jobs:
       DB_PORT: 5432
       DB_NAME: fx_trading_data
       DB_USER: postgres
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD || 'postgres' }}
       LOG_LEVEL: INFO
 
     steps:

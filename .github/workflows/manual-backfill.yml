@@ -45,7 +45,7 @@ jobs:
           DB_USER: ${{ secrets.POSTGRES_USER }}
           DB_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           OANDA_API_KEY: ${{ secrets.OANDA_API_KEY }}
-          OANDA_ENVIRONMENT: practice
+          OANDA_ENVIRONMENT: demo
           PYTHONIOENCODING: utf-8
         run: |
           WINDOW_DAYS=${{ github.event.inputs.window_days }}

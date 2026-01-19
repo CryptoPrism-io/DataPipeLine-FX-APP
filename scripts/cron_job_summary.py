@@ -44,7 +44,7 @@ def main():
 
     if not runs:
         print("No cron_job_log entries found.")
-        exit(1 if args.fail-on-error else 0)
+        exit(1 if args.fail_on_error else 0)
 
     print("Recent cron_job_log entries:")
     for r in runs:
@@ -55,7 +55,7 @@ def main():
             f"records={r['records_processed']} | start={start_str} | error={r['error_message'] or ''}"
         )
 
-    if args.fail-on-error:
+    if args.fail_on_error:
         latest = runs[0]
         if latest["status"] != "success":
             print(f"Latest run failed: {latest}")

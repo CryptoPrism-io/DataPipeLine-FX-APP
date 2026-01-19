@@ -114,9 +114,7 @@ CREATE TABLE IF NOT EXISTS real_time_prices_audit (
     mid DECIMAL(10,5),
 
     timestamp TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    INDEX idx_instrument_time (instrument, timestamp)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 6. Market Sessions Configuration Table (Static data)
@@ -171,6 +169,7 @@ CREATE INDEX IF NOT EXISTS idx_volatility_metrics_time ON volatility_metrics(tim
 CREATE INDEX IF NOT EXISTS idx_correlation_time ON correlation_matrix(time DESC);
 CREATE INDEX IF NOT EXISTS idx_best_pairs_time ON best_pairs_tracker(time DESC);
 CREATE INDEX IF NOT EXISTS idx_real_time_prices_instrument ON real_time_prices_audit(instrument);
+CREATE INDEX IF NOT EXISTS idx_real_time_prices_instrument_time ON real_time_prices_audit(instrument, timestamp);
 CREATE INDEX IF NOT EXISTS idx_cron_job_log_name ON cron_job_log(job_name);
 
 -- Create views for common queries

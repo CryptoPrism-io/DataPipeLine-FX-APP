@@ -16,12 +16,12 @@ class Config:
     OANDA_BASE_URL_LIVE = "https://api-fxtrade.oanda.com"
     OANDA_ENVIRONMENT = os.getenv("OANDA_ENVIRONMENT", "demo")  # 'demo' or 'live'
 
-    # Database
-    DB_HOST = os.getenv("DB_HOST", "localhost")
-    DB_PORT = int(os.getenv("DB_PORT", "5432"))
-    DB_NAME = os.getenv("DB_NAME", "fx_trading_data")
-    DB_USER = os.getenv("DB_USER", "postgres")
-    DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+    # Database (supports both DB_* and POSTGRES_* env var names)
+    DB_HOST = os.getenv("DB_HOST") or os.getenv("POSTGRES_HOST", "localhost")
+    DB_PORT = int(os.getenv("DB_PORT") or os.getenv("POSTGRES_PORT", "5432"))
+    DB_NAME = os.getenv("DB_NAME") or os.getenv("POSTGRES_DB", "fx_trading_data")
+    DB_USER = os.getenv("DB_USER") or os.getenv("POSTGRES_USER", "postgres")
+    DB_PASSWORD = os.getenv("DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD", "")
 
     # Redis
     REDIS_HOST = os.getenv("REDIS_HOST", "localhost")

@@ -1,10 +1,15 @@
 import argparse
 import os
+import sys
 from datetime import datetime, timedelta, timezone
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
+
+# Add parent directory to path to import config
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.config import Config
 
 
 def get_db_conn():
@@ -121,10 +126,16 @@ def main():
     parser.add_argument("--min-coverage", type=float, default=0.9, help="Min coverage ratio (0-1)")
     parser.add_argument("--window-days", type=int, default=None, help="Limit check to last N days")
     parser.add_argument("--include-weekends", action="store_true", help="Include weekend gaps in analysis (default: exclude)")
+    parser.add_argument("--tracked-only", action="store_true", help="Only check instruments in Config.TRACKED_ALL")
     args = parser.parse_args()
 
     conn = get_db_conn()
     instruments = fetch_instruments(conn)
+
+    # Filter to only tracked instruments if requested
+    if args.tracked_only:
+        tracked_set = set(Config.TRACKED_ALL)
+        instruments = [i for i in instruments if i in tracked_set]
 
     exclude_weekends = not args.include_weekends
     issues = []

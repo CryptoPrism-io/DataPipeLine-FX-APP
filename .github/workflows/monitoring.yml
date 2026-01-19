@@ -45,4 +45,4 @@ jobs:
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
-          python scripts/check_data_gaps.py --max-gap-hours 2 --min-coverage 0.9 --window-days 14
+          python scripts/check_data_gaps.py --max-gap-hours 2 --min-coverage 0.9 --window-days 14 --tracked-only

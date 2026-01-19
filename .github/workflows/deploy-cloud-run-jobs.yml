@@ -1,0 +1,329 @@
+name: Deploy FX Pipeline to Cloud Run Jobs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'jobs/**'
+      - 'utils/**'
+      - 'oanda_integration.py'
+      - 'requirements.txt'
+      - 'Dockerfile.cloudrun'
+      - '.github/workflows/deploy-cloud-run-jobs.yml'
+  workflow_dispatch:
+    inputs:
+      deploy_hourly:
+        description: 'Deploy hourly job'
+        required: false
+        default: true
+        type: boolean
+      deploy_daily:
+        description: 'Deploy daily job'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  PROJECT_ID: social-data-pipeline-and-push
+  REGION: us-central1
+  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
+  REPOSITORY: fx-pipeline
+  IMAGE_NAME: fx-pipeline-jobs
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      image_tag: ${{ steps.build.outputs.image_tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          token_format: access_token
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Enable required APIs
+        run: |
+          gcloud services enable \
+            artifactregistry.googleapis.com \
+            run.googleapis.com \
+            cloudscheduler.googleapis.com \
+            --project=${{ env.PROJECT_ID }}
+
+      - name: Create Artifact Registry Repository
+        run: |
+          gcloud artifacts repositories describe ${{ env.REPOSITORY }} \
+            --location=${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} 2>/dev/null || \
+          gcloud artifacts repositories create ${{ env.REPOSITORY }} \
+            --repository-format=docker \
+            --location=${{ env.REGION }} \
+            --description="FX Pipeline Docker Images" \
+            --project=${{ env.PROJECT_ID }}
+
+      - name: Configure Docker
+        run: |
+          gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }} --quiet
+
+      - name: Build and Push Docker Image
+        id: build
+        run: |
+          IMAGE_TAG="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          IMAGE_LATEST="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:latest"
+
+          docker build -f Dockerfile.cloudrun -t $IMAGE_TAG -t $IMAGE_LATEST .
+          docker push $IMAGE_TAG
+          docker push $IMAGE_LATEST
+
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  deploy-hourly-job:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    if: ${{ github.event_name == 'push' || github.event.inputs.deploy_hourly == 'true' }}
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          token_format: access_token
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Deploy Hourly Job
+        env:
+          JOB_NAME: fx-pipeline-hourly
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          # Check if job exists
+          if gcloud run jobs describe $JOB_NAME --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} 2>/dev/null; then
+            echo "Updating existing hourly job..."
+            gcloud run jobs update $JOB_NAME \
+              --image=$IMAGE_TAG \
+              --region=${{ env.REGION }} \
+              --project=${{ env.PROJECT_ID }} \
+              --set-env-vars="JOB_TYPE=hourly" \
+              --set-env-vars="POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}" \
+              --set-env-vars="POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}" \
+              --set-env-vars="POSTGRES_DB=${{ secrets.POSTGRES_DB }}" \
+              --set-env-vars="POSTGRES_USER=${{ secrets.POSTGRES_USER }}" \
+              --set-env-vars="POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" \
+              --set-env-vars="OANDA_API_KEY=${{ secrets.OANDA_API_KEY }}" \
+              --set-env-vars="OANDA_ENVIRONMENT=${{ secrets.OANDA_ENVIRONMENT }}" \
+              --memory=1Gi \
+              --cpu=1 \
+              --task-timeout=600s \
+              --max-retries=2
+          else
+            echo "Creating new hourly job..."
+            gcloud run jobs create $JOB_NAME \
+              --image=$IMAGE_TAG \
+              --region=${{ env.REGION }} \
+              --project=${{ env.PROJECT_ID }} \
+              --set-env-vars="JOB_TYPE=hourly" \
+              --set-env-vars="POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}" \
+              --set-env-vars="POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}" \
+              --set-env-vars="POSTGRES_DB=${{ secrets.POSTGRES_DB }}" \
+              --set-env-vars="POSTGRES_USER=${{ secrets.POSTGRES_USER }}" \
+              --set-env-vars="POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" \
+              --set-env-vars="OANDA_API_KEY=${{ secrets.OANDA_API_KEY }}" \
+              --set-env-vars="OANDA_ENVIRONMENT=${{ secrets.OANDA_ENVIRONMENT }}" \
+              --memory=1Gi \
+              --cpu=1 \
+              --task-timeout=600s \
+              --max-retries=2
+          fi
+
+      - name: Setup Hourly Scheduler
+        env:
+          JOB_NAME: fx-pipeline-hourly
+        run: |
+          SCHEDULER_NAME="${JOB_NAME}-scheduler"
+          JOB_URI="https://${{ env.REGION }}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${{ env.PROJECT_ID }}/jobs/${JOB_NAME}:run"
+          SA_EMAIL="${{ secrets.WIF_SERVICE_ACCOUNT }}"
+
+          # Check if scheduler exists
+          if gcloud scheduler jobs describe $SCHEDULER_NAME --location=${{ env.REGION }} --project=${{ env.PROJECT_ID }} 2>/dev/null; then
+            echo "Updating existing hourly scheduler..."
+            gcloud scheduler jobs update http $SCHEDULER_NAME \
+              --location=${{ env.REGION }} \
+              --project=${{ env.PROJECT_ID }} \
+              --schedule="0 * * * *" \
+              --time-zone="UTC" \
+              --uri="$JOB_URI" \
+              --http-method=POST \
+              --oauth-service-account-email="$SA_EMAIL"
+          else
+            echo "Creating new hourly scheduler..."
+            gcloud scheduler jobs create http $SCHEDULER_NAME \
+              --location=${{ env.REGION }} \
+              --project=${{ env.PROJECT_ID }} \
+              --schedule="0 * * * *" \
+              --time-zone="UTC" \
+              --uri="$JOB_URI" \
+              --http-method=POST \
+              --oauth-service-account-email="$SA_EMAIL" \
+              --description="Triggers FX Pipeline hourly job (OHLC + volatility)"
+          fi
+
+  deploy-daily-job:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    if: ${{ github.event_name == 'push' || github.event.inputs.deploy_daily == 'true' }}
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          token_format: access_token
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Deploy Daily Correlation Job
+        env:
+          JOB_NAME: fx-pipeline-daily
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          # Check if job exists
+          if gcloud run jobs describe $JOB_NAME --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} 2>/dev/null; then
+            echo "Updating existing daily job..."
+            gcloud run jobs update $JOB_NAME \
+              --image=$IMAGE_TAG \
+              --region=${{ env.REGION }} \
+              --project=${{ env.PROJECT_ID }} \
+              --set-env-vars="JOB_TYPE=daily" \
+              --set-env-vars="POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}" \
+              --set-env-vars="POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}" \
+              --set-env-vars="POSTGRES_DB=${{ secrets.POSTGRES_DB }}" \
+              --set-env-vars="POSTGRES_USER=${{ secrets.POSTGRES_USER }}" \
+              --set-env-vars="POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" \
+              --set-env-vars="OANDA_API_KEY=${{ secrets.OANDA_API_KEY }}" \
+              --set-env-vars="OANDA_ENVIRONMENT=${{ secrets.OANDA_ENVIRONMENT }}" \
+              --set-env-vars="CORRELATION_WINDOW_SIZE=100" \
+              --set-env-vars="CORRELATION_THRESHOLD=0.7" \
+              --memory=2Gi \
+              --cpu=2 \
+              --task-timeout=1800s \
+              --max-retries=2
+          else
+            echo "Creating new daily job..."
+            gcloud run jobs create $JOB_NAME \
+              --image=$IMAGE_TAG \
+              --region=${{ env.REGION }} \
+              --project=${{ env.PROJECT_ID }} \
+              --set-env-vars="JOB_TYPE=daily" \
+              --set-env-vars="POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}" \
+              --set-env-vars="POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}" \
+              --set-env-vars="POSTGRES_DB=${{ secrets.POSTGRES_DB }}" \
+              --set-env-vars="POSTGRES_USER=${{ secrets.POSTGRES_USER }}" \
+              --set-env-vars="POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" \
+              --set-env-vars="OANDA_API_KEY=${{ secrets.OANDA_API_KEY }}" \
+              --set-env-vars="OANDA_ENVIRONMENT=${{ secrets.OANDA_ENVIRONMENT }}" \
+              --set-env-vars="CORRELATION_WINDOW_SIZE=100" \
+              --set-env-vars="CORRELATION_THRESHOLD=0.7" \
+              --memory=2Gi \
+              --cpu=2 \
+              --task-timeout=1800s \
+              --max-retries=2
+          fi
+
+      - name: Setup Daily Scheduler
+        env:
+          JOB_NAME: fx-pipeline-daily
+        run: |
+          SCHEDULER_NAME="${JOB_NAME}-scheduler"
+          JOB_URI="https://${{ env.REGION }}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${{ env.PROJECT_ID }}/jobs/${JOB_NAME}:run"
+          SA_EMAIL="${{ secrets.WIF_SERVICE_ACCOUNT }}"
+
+          # Check if scheduler exists
+          if gcloud scheduler jobs describe $SCHEDULER_NAME --location=${{ env.REGION }} --project=${{ env.PROJECT_ID }} 2>/dev/null; then
+            echo "Updating existing daily scheduler..."
+            gcloud scheduler jobs update http $SCHEDULER_NAME \
+              --location=${{ env.REGION }} \
+              --project=${{ env.PROJECT_ID }} \
+              --schedule="0 0 * * *" \
+              --time-zone="UTC" \
+              --uri="$JOB_URI" \
+              --http-method=POST \
+              --oauth-service-account-email="$SA_EMAIL"
+          else
+            echo "Creating new daily scheduler..."
+            gcloud scheduler jobs create http $SCHEDULER_NAME \
+              --location=${{ env.REGION }} \
+              --project=${{ env.PROJECT_ID }} \
+              --schedule="0 0 * * *" \
+              --time-zone="UTC" \
+              --uri="$JOB_URI" \
+              --http-method=POST \
+              --oauth-service-account-email="$SA_EMAIL" \
+              --description="Triggers FX Pipeline daily correlation job at midnight UTC"
+          fi
+
+  verify-deployment:
+    needs: [deploy-hourly-job, deploy-daily-job]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    if: always()
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+          token_format: access_token
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Verify Deployment
+        run: |
+          echo "=== Cloud Run Jobs ==="
+          gcloud run jobs list \
+            --region=${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} \
+            --filter="name~fx-pipeline" \
+            --format="table(name,region,lastCreated)"
+
+          echo ""
+          echo "=== Cloud Scheduler Jobs ==="
+          gcloud scheduler jobs list \
+            --location=${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} \
+            --filter="name~fx-pipeline" \
+            --format="table(name,schedule,state)"

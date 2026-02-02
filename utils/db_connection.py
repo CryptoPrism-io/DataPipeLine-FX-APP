@@ -165,9 +165,18 @@ class DatabaseConnection:
                     INSERT INTO volatility_metrics
                     (instrument, asset_class, time, volatility_20, volatility_50, sma_15, sma_30, sma_50,
                      bb_upper, bb_middle, bb_lower, atr)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (instrument, time) DO UPDATE SET
                         asset_class = EXCLUDED.asset_class,
+                        volatility_20 = EXCLUDED.volatility_20,
+                        volatility_50 = EXCLUDED.volatility_50,
+                        sma_15 = EXCLUDED.sma_15,
+                        sma_30 = EXCLUDED.sma_30,
+                        sma_50 = EXCLUDED.sma_50,
+                        bb_upper = EXCLUDED.bb_upper,
+                        bb_middle = EXCLUDED.bb_middle,
+                        bb_lower = EXCLUDED.bb_lower,
+                        atr = EXCLUDED.atr,
                         updated_at = CURRENT_TIMESTAMP
                     """,
                     params,

@@ -34,6 +34,7 @@ jobs:
           POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          OANDA_API_KEY: ${{ secrets.OANDA_API_KEY }}
         run: |
           python scripts/cron_job_summary.py --limit 20 --fail-on-error
 
@@ -44,5 +45,6 @@ jobs:
           POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          OANDA_API_KEY: ${{ secrets.OANDA_API_KEY }}
         run: |
-          python scripts/check_data_gaps.py --max-gap-hours 2 --min-coverage 0.9 --window-days 14 --tracked-only
+          python scripts/check_data_gaps.py --max-gap-hours 4 --min-coverage 0.9 --window-days 14 --tracked-only

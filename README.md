@@ -465,3 +465,5 @@ for price_update in client.stream_prices(["EUR_USD"]):
 **Status**: ✅ Production-Ready | **Version**: 1.0 | **Last Updated**: 2024-11-18
 
 **Ready to build? Start with the Quick Start section above!** 🚀
+
+_Last reviewed: 2026-10-16_
